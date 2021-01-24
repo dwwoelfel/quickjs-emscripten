@@ -611,6 +611,39 @@ export class QuickJSVm implements LowLevelJavascriptVm<QuickJSHandle>, Disposabl
   }
 
   /**
+   * Like [`eval(code)`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Description).
+   * Evauatetes the Javascript source `code` in the global scope of this VM.
+   * When working with async code, you many need to call [[executePendingJobs]]
+   * to execute callbacks pending after synchronous evaluation returns.
+   *
+   * See [[unwrapResult]], which will throw if the function returned an error, or
+   * return the result handle directly.
+   *
+   * *Note*: to protect against infinite loops, provide an interrupt handler to
+   * [[setInterruptHandler]]. You can use [[shouldInterruptAfterDeadline]] to
+   * create a time-based deadline.
+   *
+   *
+   * @returns The last statement's value. If the code threw, result `error` will be
+   * a handle to the exception. If execution was interrupted, the error will
+   * have name `InternalError` and message `interrupted`.
+   */
+  evalModuleCode(moduleName: string, code: string): VmCallResult<QuickJSHandle> {
+    const resultPtr = this.newHeapCharPointer(moduleName).consume(moduleNameHandle =>
+      this.newHeapCharPointer(code).consume(charHandle =>
+        this.ffi.QTS_ModuleEval(this.ctx.value, moduleNameHandle.value, charHandle.value)
+      )
+    )
+
+    const errorPtr = this.ffi.QTS_ResolveException(this.ctx.value, resultPtr)
+    if (errorPtr) {
+      this.ffi.QTS_FreeValuePointer(this.ctx.value, resultPtr)
+      return { error: this.heapValueHandle(errorPtr) }
+    }
+    return { value: this.heapValueHandle(resultPtr) }
+  }
+
+  /**
    * Execute pendingJobs on the VM until `maxJobsToExecute` jobs are executed
    * (default all pendingJobs), the queue is exhausted, or the runtime
    * encounters an exception.

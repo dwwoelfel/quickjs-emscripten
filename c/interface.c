@@ -445,6 +445,10 @@ JSValue *QTS_Eval(JSContext *ctx, HeapChar *js_code) {
   return jsvalue_to_heap(JS_Eval(ctx, js_code, strlen(js_code), "eval.js", JS_EVAL_TYPE_GLOBAL));
 }
 
+JSValue *QTS_ModuleEval(JSContext *ctx, HeapChar *module_name, HeapChar *js_code) {
+  return jsvalue_to_heap(JS_Eval(ctx, js_code, strlen(js_code), module_name, JS_EVAL_TYPE_MODULE));
+}
+
 char* QTS_Typeof(JSContext *ctx, JSValueConst *value) {
   const char* result = "unknown";
   uint32_t tag = JS_VALUE_GET_TAG(*value);
